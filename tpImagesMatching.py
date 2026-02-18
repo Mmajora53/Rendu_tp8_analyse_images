@@ -35,7 +35,7 @@ def glcm(window, nb_grays) :
 
             if 0<=a<nb_grays and 0<=b<nb_grays :
                 glcm_matrix[a,b] += 1
-    
+    glcm_matrix = glcm_matrix + glcm_matrix.T  # symétrie pour compter aussi l'offset inverse
     return glcm_matrix
 
 
@@ -126,9 +126,11 @@ def image_feature(image, window_size, nb_grays) :
     cont_map = np.zeros((height, width))
     ent_map = np.zeros((height, width))
 
+    stride = 3 #pour rendre l'exécution plus raoide
+
     #on calcule la glcm sur chaque partie de l'image
-    for y in range(half_window, height - half_window):
-        for x in range(half_window, width - half_window):
+    for y in range(half_window, height - half_window, stride):
+        for x in range(half_window, width - half_window, stride):
             window = feature_mat[y-half_window : x+half_window+1, x-half_window : x+half_window+1]
             glcm_mat = glcm(window, nb_grays)
 
@@ -144,7 +146,7 @@ def image_feature(image, window_size, nb_grays) :
 
 
 
-def threshold_mask(feature_map, thresh, max_val):
+def threshold_mask(feature_map, thresh):
     """
     Normalise et applique un seuillage pour créer un masque à partir de feature_map.
     
@@ -152,7 +154,7 @@ def threshold_mask(feature_map, thresh, max_val):
     :param thresh: seuil (après normalisation 0-255)
     """
     norm_map = cv2.normalize(feature_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    _, mask = cv2.threshold(norm_map, thresh, max_val, cv2.THRESH_BINARY)
+    _, mask = cv2.threshold(norm_map, thresh, 255, cv2.THRESH_BINARY)
     return mask
 
 
@@ -170,9 +172,9 @@ zebra1 = safe_imread(os.path.join(DOSSIER_SCRIPT,"zebra_1.tif"))
 zebra2 = safe_imread(os.path.join(DOSSIER_SCRIPT,"zebra_2.tif"))
 zebra3 = safe_imread(os.path.join(DOSSIER_SCRIPT,"zebra_3.tif"))
 
-nb_grays = 256
+nb_grays = 16
 
-window_size = 5
+window_size = 9
 
 # Test question 1 :
 v_map, c_map, e_map = image_feature(zebra1, window_size, nb_grays)
@@ -180,11 +182,11 @@ v_map, c_map, e_map = image_feature(zebra1, window_size, nb_grays)
 
 # Test question 2 : 
 
-cont_thresh = 100  # à ajuster si nécessaire
+cont_thresh = 10  # à ajuster si nécessaire
 mask_glcm_cont = threshold_mask(c_map, cont_thresh) #test sur contraste
 
 
-var_thresh = 50  # à ajuster si nécessaire
+var_thresh = 5  # à ajuster si nécessaire
 mask_glcm_var = threshold_mask(v_map, cont_thresh) #test sur variance
 
 
@@ -198,11 +200,9 @@ cv2.destroyAllWindows()
 
 # Test question 4 : 
 
-lbp_map = local_binary_pattern(zebra1, P=50, R=25, method="uniform")
-lbp_var = uniform_filter(lbp_map.astype(float) ** 2, size=window_size) - uniform_filter(lbp_map.astype(float), size=window_size) ** 2
-lbp_thresh = 20
-mask_lbp = threshold_mask(lbp_var, lbp_thresh)
+lbp_map = local_binary_pattern(zebra1, P=24, R=3, method="uniform")
 
-cv2.imshow("LBP avec zebra 1", mask_lbp)
+
+cv2.imshow("LBP avec zebra 1", lbp_map)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
